@@ -1,0 +1,9 @@
+[
+  {
+    "name": "Example Range 1",
+    "country": "US",
+    "start": "192.168.1.0",
+    "end": "192.168.1.255",
+    "description": "示例：替换为你要扫描的实际 IP 段"
+  }
+]

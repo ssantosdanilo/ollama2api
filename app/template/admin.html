@@ -1,0 +1,1606 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理控制台 - Ollama2API</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #09090b; color: #fafafa; min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      position: relative; overflow-x: hidden;
+    }
+    .bg-orb { position: fixed; border-radius: 50%; filter: blur(100px); opacity: 0.08; pointer-events: none; z-index: 0; }
+    .bg-orb-1 { width: 500px; height: 500px; background: #10b981; top: -150px; left: -100px; animation: od1 30s ease-in-out infinite; }
+    .bg-orb-2 { width: 450px; height: 450px; background: #06b6d4; bottom: -100px; right: -100px; animation: od2 35s ease-in-out infinite; }
+    .bg-orb-3 { width: 300px; height: 300px; background: #14b8a6; top: 40%; left: 50%; animation: od3 25s ease-in-out infinite; }
+    @keyframes od1 { 0%,100%{transform:translate(0,0)} 25%{transform:translate(100px,80px)} 50%{transform:translate(50px,200px)} 75%{transform:translate(-50px,120px)} }
+    @keyframes od2 { 0%,100%{transform:translate(0,0)} 25%{transform:translate(-80px,-60px)} 50%{transform:translate(-150px,-120px)} 75%{transform:translate(-60px,-40px)} }
+    @keyframes od3 { 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(-120px,60px) scale(1.15)} 66%{transform:translate(80px,-80px) scale(0.85)} }
+
+    .header { position:sticky;top:0;z-index:50;background:rgba(9,9,11,0.7);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid rgba(255,255,255,0.06);height:56px;display:flex;align-items:center;padding:0 24px; }
+    .header-inner { max-width:1200px;width:100%;margin:0 auto;display:flex;align-items:center;justify-content:space-between; }
+    .logo { font-size:18px;font-weight:700;letter-spacing:-0.3px; }
+    .logo-ver { font-size:11px;color:#52525b;margin-left:8px;font-weight:400; }
+    .btn-logout { font-size:13px;color:#71717a;background:none;border:none;cursor:pointer;padding:6px 10px;border-radius:6px;transition:color .15s;display:flex;align-items:center;gap:4px; }
+    .btn-logout:hover { color:#fafafa; }
+    .btn-logout svg { width:14px;height:14px; }
+    .container { max-width:1200px;margin:0 auto;padding:24px;position:relative;z-index:1; }
+
+    .tabs { display:flex;gap:4px;border-bottom:1px solid rgba(255,255,255,0.06);margin-bottom:24px;overflow-x:auto; }
+    .tab-btn { padding:10px 16px;font-size:13px;font-weight:500;color:#71717a;background:none;border:none;cursor:pointer;white-space:nowrap;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .2s,border-color .2s; }
+    .tab-btn:hover { color:#a1a1aa; }
+    .tab-btn.active { color:#fafafa;border-bottom-color:#fafafa; }
+
+    .stats-grid { display:grid;gap:12px;margin-bottom:24px; }
+    .sg6 { grid-template-columns:repeat(6,1fr); }
+    .sg4 { grid-template-columns:repeat(4,1fr); }
+    @media(max-width:768px) { .sg6,.sg4 { grid-template-columns:repeat(2,1fr); } }
+    .stat-card { background:rgba(24,24,27,0.5);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:16px 20px;transition:border-color .2s,transform .2s;animation:ce .4s ease-out both; }
+    .stat-card:hover { border-color:rgba(255,255,255,0.1);transform:translateY(-2px); }
+    .stat-card:nth-child(1){animation-delay:0s} .stat-card:nth-child(2){animation-delay:.05s} .stat-card:nth-child(3){animation-delay:.1s} .stat-card:nth-child(4){animation-delay:.15s} .stat-card:nth-child(5){animation-delay:.2s} .stat-card:nth-child(6){animation-delay:.25s}
+    @keyframes ce { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+    .stat-label { font-size:12px;color:#71717a;margin-bottom:4px; }
+    .stat-value { font-size:24px;font-weight:700;font-variant-numeric:tabular-nums; }
+    .c-green{color:#22c55e} .c-red{color:#ef4444} .c-yellow{color:#eab308} .c-blue{color:#3b82f6} .c-purple{color:#a855f7} .c-muted{color:#71717a}
+
+    .panel { background:rgba(24,24,27,0.5);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.06);border-radius:12px;overflow:hidden;animation:ce .4s ease-out both;animation-delay:.1s; }
+    .panel-header { display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid rgba(255,255,255,0.06);gap:12px;flex-wrap:wrap; }
+    .panel-header-text { font-size:13px;color:#71717a; }
+    .panel-header-text b { color:#fafafa;font-weight:600; }
+    .panel-actions { display:flex;align-items:center;gap:8px; }
+
+    .btn { display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all .2s; }
+    .btn:hover { opacity:.85; }
+    .btn svg { width:14px;height:14px;flex-shrink:0; }
+    .btn-white { background:#fafafa;color:#09090b; }
+    .btn-white:hover { transform:translateY(-1px);box-shadow:0 4px 12px rgba(250,250,250,0.1); }
+    .btn-ghost { background:transparent;color:#a1a1aa;border:1px solid rgba(63,63,70,0.6); }
+    .btn-ghost:hover { color:#fafafa;border-color:#52525b;opacity:1; }
+    .btn-danger { background:transparent;color:#a1a1aa;border:1px solid rgba(63,63,70,0.6); }
+    .btn-danger:hover { color:#ef4444;border-color:#ef4444;opacity:1; }
+    .btn-icon { display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;border:none;background:transparent;color:#71717a;cursor:pointer;transition:all .2s; }
+    .btn-icon:hover { background:rgba(255,255,255,0.06);color:#fafafa; }
+    .btn-icon svg { width:15px;height:15px; }
+    .btn-icon-danger:hover { background:rgba(239,68,68,0.1);color:#ef4444; }
+
+    .input { height:32px;padding:0 10px;background:rgba(9,9,11,0.6);border:1px solid rgba(63,63,70,0.6);border-radius:8px;color:#fafafa;font-size:13px;outline:none;transition:border-color .2s,box-shadow .2s; }
+    .input::placeholder { color:#52525b; }
+    .input:focus { border-color:rgba(16,185,129,0.5);box-shadow:0 0 0 3px rgba(16,185,129,0.08); }
+    .input-lg { height:40px;padding:0 12px;font-size:14px;border-radius:10px; }
+    textarea.input { height:auto;padding:8px 10px;resize:none;font-family:inherit; }
+
+    .tbl { width:100%;font-size:13px;border-collapse:collapse; }
+    .tbl th { text-align:left;padding:8px 16px;font-size:12px;font-weight:500;color:#52525b;border-bottom:1px solid rgba(255,255,255,0.06); }
+    .tbl td { padding:10px 16px;border-bottom:1px solid rgba(255,255,255,0.03);color:#d4d4d8; }
+    .tbl tbody tr { transition:background .15s; }
+    .tbl tbody tr:hover { background:rgba(255,255,255,0.03); }
+    .tbl .tc { text-align:center; }
+
+    .badge { display:inline-flex;align-items:center;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;letter-spacing:.02em; }
+    .badge-green { background:rgba(34,197,94,0.12);color:#4ade80; }
+    .badge-red { background:rgba(239,68,68,0.12);color:#fca5a5; }
+    .badge-yellow { background:rgba(234,179,8,0.12);color:#fde047; }
+    .badge-gray { background:rgba(255,255,255,0.06);color:#71717a; }
+    .badge-blue { background:rgba(59,130,246,0.12);color:#93c5fd; }
+
+    .mono { font-family:'SF Mono',Menlo,Monaco,'Courier New',monospace;font-size:12px; }
+    .code-chip { display:inline-block;padding:2px 8px;background:rgba(255,255,255,0.06);border-radius:6px;font-family:'SF Mono',Menlo,Monaco,monospace;font-size:12px;color:#d4d4d8;cursor:pointer;transition:background .15s; }
+    .code-chip:hover { background:rgba(255,255,255,0.1); }
+    .model-grid { display:flex;flex-wrap:wrap;gap:4px;flex-direction:row; }
+    .model-card { display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:6px;font-size:11px;font-family:'SF Mono',Menlo,Monaco,monospace;border:1px solid rgba(255,255,255,0.06);white-space:nowrap;transition:all .15s; }
+    .model-card .dot { width:6px;height:6px;border-radius:50%;flex-shrink:0; }
+    .model-card.ok { background:rgba(34,197,94,0.08);border-color:rgba(34,197,94,0.2);color:#86efac; }
+    .model-card.ok .dot { background:#4ade80;box-shadow:0 0 4px rgba(74,222,128,0.4); }
+    .model-card.fail { background:rgba(239,68,68,0.08);border-color:rgba(239,68,68,0.2);color:#fca5a5;text-decoration:line-through;text-decoration-color:rgba(252,165,165,0.4); }
+    .model-card.fail .dot { background:#f87171;box-shadow:0 0 4px rgba(248,113,113,0.4); }
+    .model-card.none { background:rgba(255,255,255,0.02);border-color:rgba(255,255,255,0.04);color:#52525b; }
+    .model-card.none .dot { background:#3f3f46; }
+
+    .modal-overlay { position:fixed;inset:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);z-index:50;display:none;align-items:center;justify-content:center; }
+    .modal-overlay.open { display:flex; }
+    .modal-card { background:rgba(24,24,27,0.85);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.08);border-radius:16px;width:100%;max-width:440px;margin:0 16px;padding:24px;box-shadow:0 16px 48px rgba(0,0,0,0.4);animation:me .25s ease-out; }
+    @keyframes me { from{opacity:0;transform:translateY(16px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+    .modal-title { font-size:16px;font-weight:600;margin-bottom:20px; }
+    .modal-field { margin-bottom:16px; }
+    .modal-field label { display:block;font-size:13px;font-weight:500;color:#a1a1aa;margin-bottom:6px; }
+    .modal-actions { display:flex;justify-content:flex-end;gap:8px;margin-top:24px; }
+
+    .chart-grid { display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px; }
+    @media(max-width:768px) { .chart-grid { grid-template-columns:1fr; } }
+    .chart-card { background:rgba(24,24,27,0.5);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:20px;animation:ce .4s ease-out both; }
+    .chart-card h3 { font-size:13px;font-weight:500;color:#71717a;margin-bottom:16px; }
+
+    .hidden { display:none !important; }
+    .empty-state { padding:48px 0;text-align:center;color:#52525b;font-size:13px; }
+    .flex-center { display:flex;align-items:center;justify-content:center; }
+    .gap-4 { gap:4px; }
+    .progress-bar { padding:8px 20px;background:rgba(26,26,31,0.6);border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;gap:8px;font-size:13px;color:#a1a1aa; }
+
+    @keyframes ti { from{transform:translateY(16px);opacity:0} to{transform:translateY(0);opacity:1} }
+    .toast { position:fixed;bottom:20px;right:20px;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:500;color:#fafafa;z-index:100;animation:ti .25s ease-out;backdrop-filter:blur(12px); }
+    .toast-success { background:rgba(22,163,74,0.85); }
+    .toast-error { background:rgba(220,38,38,0.85); }
+    .toast-info { background:rgba(39,39,42,0.85);border:1px solid rgba(63,63,70,0.6); }
+
+    ::-webkit-scrollbar { width:6px;height:6px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.08);border-radius:3px; }
+    ::-webkit-scrollbar-thumb:hover { background:rgba(255,255,255,0.12); }
+    @keyframes spin { to{transform:rotate(360deg)} }
+    .spin { animation:spin 1s linear infinite; }
+
+    /* Chat UI */
+    .chat-container { display:flex;flex-direction:column;height:calc(100vh - 240px);min-height:400px; }
+    .chat-messages { flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:12px; }
+    .chat-msg { max-width:80%;padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.6;word-break:break-word;white-space:pre-wrap; }
+    .chat-msg code { background:rgba(0,0,0,0.3);padding:1px 4px;border-radius:4px;font-family:'SF Mono',Menlo,monospace;font-size:12px; }
+    .chat-msg pre { background:rgba(0,0,0,0.4);padding:10px;border-radius:8px;overflow-x:auto;margin:6px 0; }
+    .chat-msg pre code { background:none;padding:0; }
+    .chat-user { align-self:flex-end;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.2);color:#d4d4d8; }
+    .chat-ai { align-self:flex-start;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);color:#d4d4d8; }
+    .chat-input-bar { display:flex;gap:8px;padding:12px 20px;border-top:1px solid rgba(255,255,255,0.06); }
+    .chat-input-bar input { flex:1; }
+    .chat-toolbar { display:flex;align-items:center;gap:8px;padding:8px 20px;border-bottom:1px solid rgba(255,255,255,0.06); }
+    .chat-toolbar select { height:32px;padding:0 8px;background:rgba(9,9,11,0.6);border:1px solid rgba(63,63,70,0.6);border-radius:8px;color:#fafafa;font-size:13px;outline:none; }
+
+    /* Scanner */
+    .scan-input-row { display:flex;gap:8px;align-items:center;flex-wrap:wrap; }
+    .scan-progress { margin-top:12px; }
+    .scan-progress-bar { height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden; }
+    .scan-progress-fill { height:100%;background:#22c55e;border-radius:3px;transition:width .3s; }
+    .group-row { cursor:pointer;user-select:none; }
+    .group-row:hover { background:rgba(255,255,255,0.04); }
+    .group-row td { padding:10px 16px;border-bottom:1px solid rgba(255,255,255,0.06);font-weight:600;font-size:13px; }
+    .group-arrow { display:inline-block;transition:transform .2s;margin-right:6px;font-size:11px;color:#52525b; }
+    .group-arrow.open { transform:rotate(90deg); }
+    .group-hidden { display:none; }
+  </style>
+</head>
+<body>
+  <div class="bg-orb bg-orb-1"></div>
+  <div class="bg-orb bg-orb-2"></div>
+  <div class="bg-orb bg-orb-3"></div>
+
+  <header class="header">
+    <div class="header-inner">
+      <div><span class="logo">Ollama2API</span><span class="logo-ver">v1.0.0</span></div>
+      <button onclick="logout()" class="btn-logout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        退出
+      </button>
+    </div>
+  </header>
+
+  <div class="container">
+    <nav class="tabs">
+      <button onclick="switchTab('backends')" id="tabBackends" class="tab-btn active">后端管理</button>
+      <button onclick="switchTab('ai')" id="tabAi" class="tab-btn">AI 助手</button>
+      <button onclick="switchTab('scanner')" id="tabScanner" class="tab-btn">扫描管理</button>
+      <button onclick="switchTab('stats')" id="tabStats" class="tab-btn">请求统计</button>
+      <button onclick="switchTab('logs')" id="tabLogs" class="tab-btn">日志审计</button>
+      <button onclick="switchTab('keys')" id="tabKeys" class="tab-btn">Key 管理</button>
+      <button onclick="switchTab('config')" id="tabConfig" class="tab-btn">系统配置</button>
+      <button onclick="switchTab('proxy')" id="tabProxy" class="tab-btn">代理管理</button>
+    </nav>
+
+    <!-- ===== 后端管理 ===== -->
+    <div id="panelBackends">
+      <div class="stats-grid sg6">
+        <div class="stat-card"><div class="stat-label">后端总数</div><div class="stat-value" id="bkTotal">-</div></div>
+        <div class="stat-card"><div class="stat-label">在线</div><div class="stat-value c-green" id="bkOnline">-</div></div>
+        <div class="stat-card"><div class="stat-label">离线</div><div class="stat-value c-red" id="bkOffline">-</div></div>
+        <div class="stat-card"><div class="stat-label">冷却中</div><div class="stat-value c-yellow" id="bkCooldown">-</div></div>
+        <div class="stat-card"><div class="stat-label">已启用</div><div class="stat-value c-blue" id="bkEnabled">-</div></div>
+        <div class="stat-card"><div class="stat-label">可用模型</div><div class="stat-value c-purple" id="bkModels">-</div></div>
+      </div>
+      <div class="stats-grid sg4">
+        <div class="stat-card"><div class="stat-label">glm-4.7</div><div class="stat-value"><span class="c-green" id="mdGlm47Ok">0</span><span class="c-muted" style="font-size:14px;"> / </span><span class="c-red" id="mdGlm47Fail">0</span></div></div>
+        <div class="stat-card"><div class="stat-label">kimi-k2.5</div><div class="stat-value"><span class="c-green" id="mdKimiOk">0</span><span class="c-muted" style="font-size:14px;"> / </span><span class="c-red" id="mdKimiFail">0</span></div></div>
+        <div class="stat-card"><div class="stat-label">gemini-3-flash-preview</div><div class="stat-value"><span class="c-green" id="mdGeminiOk">0</span><span class="c-muted" style="font-size:14px;"> / </span><span class="c-red" id="mdGeminiFail">0</span></div></div>
+        <div class="stat-card"><div class="stat-label">glm-5</div><div class="stat-value"><span class="c-green" id="mdGlm5Ok">0</span><span class="c-muted" style="font-size:14px;"> / </span><span class="c-red" id="mdGlm5Fail">0</span></div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-header">
+          <input id="bkFilter" type="text" placeholder="搜索 IP..." oninput="renderBackends()" class="input" style="width:200px;">
+          <div class="panel-actions">
+            <button onclick="loadBackends()" class="btn-icon" title="刷新"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button>
+            <button onclick="cleanUselessBackends()" class="btn btn-danger">清理无用</button>
+            <button onclick="triggerHealthCheck()" class="btn btn-ghost">健康检查</button>
+            <button onclick="openModal('addBkModal')" class="btn btn-white"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增</button>
+          </div>
+        </div>
+        <div id="healthProgress" class="hidden progress-bar">
+          <svg class="spin" style="width:14px;height:14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+          <span>检查中: <span id="healthProgressText">0/0</span></span>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="tbl">
+            <thead><tr>
+              <th style="padding-left:20px;">IP:Port</th><th class="tc" style="width:64px;">状态</th>
+              <th style="min-width:420px;">模型</th><th class="tc" style="width:80px;">延迟</th>
+              <th class="tc" style="width:80px;">请求/失败</th><th style="width:140px;">最近使用</th>
+              <th class="tc" style="width:120px;">操作</th>
+            </tr></thead>
+            <tbody id="bkTableBody"></tbody>
+          </table>
+        </div>
+        <div id="bkEmpty" class="hidden empty-state">暂无后端节点</div>
+        <div id="bkPager" class="hidden" style="display:flex;align-items:center;justify-content:space-between;padding:8px 20px;border-top:1px solid rgba(255,255,255,0.06);font-size:12px;color:#71717a;">
+          <span id="bkPagerInfo"></span>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <select id="bkPageSize" onchange="bkPage=1;renderBackends()" class="input" style="height:26px;font-size:11px;padding:0 6px;">
+              <option value="50">50/页</option><option value="100">100/页</option><option value="200">200/页</option>
+            </select>
+            <button onclick="bkPage--;renderBackends()" id="bkPrev" class="btn btn-ghost" style="height:26px;font-size:11px;padding:0 8px;">上一页</button>
+            <button onclick="bkPage++;renderBackends()" id="bkNext" class="btn btn-ghost" style="height:26px;font-size:11px;padding:0 8px;">下一页</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== AI 助手 ===== -->
+    <div id="panelAi" class="hidden">
+      <div class="panel chat-container">
+        <div class="chat-toolbar">
+          <select id="aiModel">
+            <option value="glm-4.7">glm-4.7</option>
+            <option value="kimi-k2.5">kimi-k2.5</option>
+            <option value="gemini-3-flash-preview">gemini-3-flash-preview</option>
+            <option value="glm-5">glm-5</option>
+          </select>
+          <div style="display:flex;gap:4px;margin-left:8px;flex-wrap:wrap;">
+            <button onclick="quickChat('推荐可以扫描的地区，列出表格，然后帮我一键扫描所有未扫描的地区')" class="btn btn-ghost" style="font-size:11px;height:28px;padding:0 8px;">推荐扫描</button>
+            <button onclick="quickChat('分析当前系统状态，各模型可用性如何？有没有需要关注的问题？')" class="btn btn-ghost" style="font-size:11px;height:28px;padding:0 8px;">系统诊断</button>
+            <button onclick="quickChat('帮我清理所有无用后端（没有可用目标模型的），然后触发一次健康检查')" class="btn btn-ghost" style="font-size:11px;height:28px;padding:0 8px;">清理优化</button>
+            <button onclick="quickChat('帮我创建3个API Key，备注分别是 user-1, user-2, user-3')" class="btn btn-ghost" style="font-size:11px;height:28px;padding:0 8px;">批量建Key</button>
+          </div>
+          <button onclick="clearChat()" class="btn btn-ghost" style="margin-left:auto;">清空对话</button>
+        </div>
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-input-bar">
+          <input id="chatInput" type="text" class="input" style="flex:1;" placeholder="输入消息..." onkeydown="if(event.key==='Enter')sendChat()">
+          <button onclick="sendChat()" class="btn btn-white" id="chatSendBtn">发送</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 扫描管理 ===== -->
+    <div id="panelScanner" class="hidden">
+      <div class="stats-grid sg4" id="scanStats">
+        <div class="stat-card"><div class="stat-label">已扫描段数</div><div class="stat-value" id="scRanges">-</div></div>
+        <div class="stat-card"><div class="stat-label">总发现</div><div class="stat-value c-green" id="scFound">-</div></div>
+        <div class="stat-card"><div class="stat-label">总入库</div><div class="stat-value c-blue" id="scUsable">-</div></div>
+        <div class="stat-card"><div class="stat-label">扫描状态</div><div class="stat-value" id="scStatus">空闲</div></div>
+      </div>
+      <div class="panel" style="margin-bottom:16px;">
+        <div class="panel-header">
+          <span class="panel-header-text"><b>IP 段扫描</b></span>
+          <div class="panel-actions">
+            <button onclick="stopScan()" class="btn btn-danger" id="stopScanBtn">停止扫描</button>
+            <button onclick="showSmartRecommend()" class="btn btn-white" id="smartRecBtn">AI 智能推荐</button>
+            <button onclick="autoScanRecommended()" class="btn btn-ghost" id="autoScanBtn">一键全扫</button>
+            <button onclick="scannerCleanup()" class="btn btn-danger">清理离线后端</button>
+          </div>
+        </div>
+        <div style="padding:16px 20px;">
+          <div class="scan-input-row">
+            <input id="scanStartIp" type="text" class="input" placeholder="起始IP (如 148.251.0.0)" style="width:200px;">
+            <span style="color:#52525b;">—</span>
+            <input id="scanEndIp" type="text" class="input" placeholder="结束IP (如 148.251.255.255)" style="width:200px;">
+            <label style="display:flex;align-items:center;gap:4px;font-size:13px;color:#a1a1aa;"><input type="checkbox" id="scanForce"> 强制重扫</label>
+            <button onclick="startScan()" class="btn btn-white" id="scanBtn">开始扫描</button>
+          </div>
+          <div id="scanProgressArea" class="scan-progress hidden">
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:#a1a1aa;margin-bottom:4px;">
+              <span id="scanProgressText">0/0</span>
+              <span>发现: <span id="scanFoundLive" class="c-green">0</span></span>
+            </div>
+            <div class="scan-progress-bar"><div id="scanProgressFill" class="scan-progress-fill" style="width:0%"></div></div>
+          </div>
+          <div id="autoScanArea" class="scan-progress hidden">
+            <div style="font-size:12px;color:#a1a1aa;margin-bottom:4px;">
+              自动扫描: <span id="autoScanText">0/0</span> — <span id="autoScanName">-</span>
+            </div>
+            <div class="scan-progress-bar"><div id="autoScanFill" class="scan-progress-fill" style="width:0%"></div></div>
+          </div>
+        </div>
+      </div>
+      <div id="smartRecArea" class="hidden" style="margin-bottom:16px;">
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-header-text"><b>AI 智能推荐</b></span>
+            <div class="panel-actions">
+              <button onclick="document.getElementById('smartRecArea').classList.add('hidden')" class="btn btn-ghost">关闭</button>
+            </div>
+          </div>
+          <div id="smartRecChat" style="padding:16px 20px;max-height:400px;overflow-y:auto;font-size:13px;line-height:1.7;color:#d4d4d8;white-space:pre-wrap;"></div>
+          <div id="smartRecTable" class="hidden">
+            <div style="border-top:1px solid rgba(255,255,255,0.06);overflow-x:auto;">
+              <table class="tbl">
+                <thead><tr>
+                  <th style="padding-left:20px;width:36px;"><input type="checkbox" onchange="toggleSmartAll(this.checked)"></th>
+                  <th>数据中心</th><th class="tc">IP 段</th><th>推荐理由</th>
+                </tr></thead>
+                <tbody id="smartRecBody"></tbody>
+              </table>
+            </div>
+            <div style="padding:12px 20px;border-top:1px solid rgba(255,255,255,0.06);display:flex;justify-content:flex-end;">
+              <button onclick="scanSmartSelected()" class="btn btn-white" id="smartScanBtn">扫描选中</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="panel" style="margin-bottom:16px;">
+        <div class="panel-header">
+          <span class="panel-header-text"><b>推荐扫描地区</b> — 共 <span id="recTotal">0</span> 个, 未扫描 <span id="recUnscanned" class="c-yellow">0</span> 个</span>
+          <div class="panel-actions">
+            <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:#71717a;cursor:pointer;"><input type="checkbox" id="recShowScanned" onchange="loadRecommend()"> 显示已扫描</label>
+            <button onclick="loadRecommend()" class="btn-icon" title="刷新"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button>
+            <button onclick="scanSelected()" class="btn btn-white" id="scanSelectedBtn">扫描选中</button>
+          </div>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="tbl">
+            <thead><tr>
+              <th style="padding-left:20px;width:36px;"><input type="checkbox" id="recCheckAll" onchange="toggleRecAll(this.checked)"></th>
+              <th>数据中心</th><th>国家</th><th class="tc">IP 段</th>
+              <th class="tc">IP 数</th><th class="tc">状态</th><th class="tc" style="width:80px;">操作</th>
+            </tr></thead>
+            <tbody id="recTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-header-text">扫描历史</span>
+          <div class="panel-actions">
+            <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:#71717a;cursor:pointer;"><input type="checkbox" id="shShowEmpty" onchange="renderScanHistory()"> 显示空结果</label>
+            <button onclick="loadScanHistory()" class="btn-icon" title="刷新"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button>
+          </div>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="tbl">
+            <thead><tr><th style="padding-left:20px;">IP 段</th><th class="tc">扫描时间</th><th class="tc">发现数</th><th class="tc">入库数</th><th class="tc">方式</th><th class="tc">详情</th></tr></thead>
+            <tbody id="scanHistoryBody"></tbody>
+          </table>
+        </div>
+        <div id="scanHistoryEmpty" class="hidden empty-state">暂无扫描记录</div>
+        <div id="shPager" class="hidden" style="display:flex;align-items:center;justify-content:space-between;padding:8px 20px;border-top:1px solid rgba(255,255,255,0.06);font-size:12px;color:#71717a;">
+          <span id="shPagerInfo"></span>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <button onclick="shPage--;renderScanHistory()" id="shPrev" class="btn btn-ghost" style="height:26px;font-size:11px;padding:0 8px;">上一页</button>
+            <button onclick="shPage++;renderScanHistory()" id="shNext" class="btn btn-ghost" style="height:26px;font-size:11px;padding:0 8px;">下一页</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 请求统计 ===== -->
+    <div id="panelStats" class="hidden">
+      <div class="stats-grid sg4">
+        <div class="stat-card"><div class="stat-label">今日请求</div><div class="stat-value" id="stTotal">-</div></div>
+        <div class="stat-card"><div class="stat-label">今日成功</div><div class="stat-value c-green" id="stSuccess">-</div></div>
+        <div class="stat-card"><div class="stat-label">今日失败</div><div class="stat-value c-red" id="stFailed">-</div></div>
+        <div class="stat-card"><div class="stat-label">成功率</div><div class="stat-value c-blue" id="stRate">-</div></div>
+      </div>
+      <div class="chart-grid">
+        <div class="chart-card"><h3>24小时请求趋势</h3><canvas id="hourlyChart" height="200"></canvas></div>
+        <div class="chart-card"><h3>7天请求统计</h3><canvas id="dailyChart" height="200"></canvas></div>
+      </div>
+      <div class="panel" style="padding:20px;">
+        <div style="font-size:13px;color:#71717a;margin-bottom:12px;">模型分布</div>
+        <div id="modelDist" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+      </div>
+    </div>
+
+    <!-- ===== 日志审计 ===== -->
+    <div id="panelLogs" class="hidden">
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-header-text">共 <b id="logTotal">0</b> 条日志</span>
+          <div class="panel-actions">
+            <button onclick="loadLogs()" class="btn-icon" title="刷新"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button>
+            <button onclick="clearLogs()" class="btn btn-danger">清空日志</button>
+          </div>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="tbl">
+            <thead><tr><th style="padding-left:20px;width:160px;">时间</th><th style="width:120px;">模型</th><th>后端</th><th>API Key</th><th class="tc" style="width:64px;">状态</th><th class="tc" style="width:64px;">耗时</th><th>错误</th></tr></thead>
+            <tbody id="logTableBody"></tbody>
+          </table>
+        </div>
+        <div id="logEmpty" class="hidden empty-state">暂无日志</div>
+        <div id="logPager" class="hidden" style="display:flex;align-items:center;justify-content:space-between;padding:8px 20px;border-top:1px solid rgba(255,255,255,0.06);font-size:12px;color:#71717a;">
+          <span id="logPagerInfo"></span>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <select id="logPageSize" onchange="logPage=1;loadLogs()" class="input" style="height:26px;font-size:11px;padding:0 6px;">
+              <option value="50">50/页</option><option value="100">100/页</option><option value="200">200/页</option>
+            </select>
+            <button onclick="logPage--;loadLogs()" id="logPrev" class="btn btn-ghost" style="height:26px;font-size:11px;padding:0 8px;">上一页</button>
+            <button onclick="logPage++;loadLogs()" id="logNext" class="btn btn-ghost" style="height:26px;font-size:11px;padding:0 8px;">下一页</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== Key 管理 ===== -->
+    <div id="panelKeys" class="hidden">
+      <div class="stats-grid sg4">
+        <div class="stat-card"><div class="stat-label">Key 总数</div><div class="stat-value" id="keyTotal">-</div></div>
+        <div class="stat-card"><div class="stat-label">已启用</div><div class="stat-value c-green" id="keyEnabled">-</div></div>
+        <div class="stat-card"><div class="stat-label">已禁用</div><div class="stat-value c-muted" id="keyDisabled">-</div></div>
+        <div class="stat-card"><div class="stat-label">总调用</div><div class="stat-value c-blue" id="keyReqs">-</div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-header-text">API Key 列表</span>
+          <div class="panel-actions">
+            <button onclick="loadKeys()" class="btn-icon" title="刷新"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button>
+            <button onclick="openModal('batchKeyModal')" class="btn btn-ghost">批量创建</button>
+            <button onclick="createKey()" class="btn btn-white"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增</button>
+          </div>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="tbl">
+            <thead><tr><th style="padding-left:20px;">API Key</th><th style="width:120px;">备注</th><th class="tc" style="width:64px;">状态</th><th class="tc" style="width:80px;">调用次数</th><th style="width:160px;">最后使用</th><th class="tc" style="width:100px;">操作</th></tr></thead>
+            <tbody id="keyTableBody"></tbody>
+          </table>
+        </div>
+        <div id="keyEmpty" class="hidden empty-state">暂无 API Key</div>
+      </div>
+    </div>
+
+    <!-- ===== 系统配置 ===== -->
+    <div id="panelConfig" class="hidden">
+      <div id="configForm"></div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+        <button onclick="resetConfig()" class="btn btn-ghost">恢复默认</button>
+        <button onclick="saveConfig()" class="btn btn-white">保存配置</button>
+      </div>
+    </div>
+
+    <!-- ===== 代理管理 ===== -->
+    <div id="panelProxy" class="hidden">
+      <div class="stats-grid sg4">
+        <div class="stat-card"><div class="stat-label">节点总数</div><div class="stat-value" id="pxTotal">0</div></div>
+        <div class="stat-card"><div class="stat-label">可用节点</div><div class="stat-value c-green" id="pxAlive">0</div></div>
+        <div class="stat-card"><div class="stat-label">最佳延迟</div><div class="stat-value c-blue" id="pxBestLatency">-</div></div>
+        <div class="stat-card"><div class="stat-label">代理状态</div><div class="stat-value" id="pxStatus">未启用</div></div>
+      </div>
+      <div class="panel" style="margin-bottom:16px;">
+        <div class="panel-header">
+          <span class="panel-header-text"><b>订阅管理</b></span>
+          <div class="panel-actions">
+            <button onclick="openModal('addSubModal')" class="btn btn-white"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>添加订阅</button>
+          </div>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="tbl">
+            <thead><tr><th style="padding-left:20px;">名称</th><th>URL</th><th class="tc">节点数</th><th style="width:140px;">添加时间</th><th class="tc" style="width:80px;">操作</th></tr></thead>
+            <tbody id="subTableBody"></tbody>
+          </table>
+        </div>
+        <div id="subEmpty" class="empty-state hidden">暂无订阅</div>
+      </div>
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-header-text" style="cursor:pointer;" onclick="toggleNodeList()"><b>节点列表</b> <span id="nodeCount"></span> <span id="nodeToggleArrow" style="font-size:11px;">&#9654;</span></span>
+          <div class="panel-actions">
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#a1a1aa;cursor:pointer;">
+              <input type="checkbox" id="pxEnabledToggle" onchange="toggleProxyEnabled(this.checked)"> 启用代理
+            </label>
+            <button onclick="smartSelectNode()" class="btn btn-white" id="smartSelectBtn">智能选择</button>
+            <button onclick="testAllProxyNodes()" class="btn btn-ghost">全部测速</button>
+            <button onclick="openModal('addNodeModal')" class="btn btn-white"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>添加节点</button>
+          </div>
+        </div>
+        <div id="nodeTableWrap" style="overflow-x:auto;display:none;">
+          <table class="tbl">
+            <thead><tr><th style="padding-left:20px;">名称</th><th class="tc">协议</th><th>服务器</th><th class="tc">延迟</th><th class="tc">状态</th><th class="tc" style="width:120px;">操作</th></tr></thead>
+            <tbody id="nodeTableBody"></tbody>
+          </table>
+        </div>
+        <div id="nodeEmpty" class="empty-state hidden">暂无节点，请添加订阅或手动添加</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Modals ===== -->
+  <div id="addBkModal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-title">添加后端节点</div>
+      <div class="modal-field"><label>IP 地址（每行一个）</label><textarea id="addBkIps" rows="4" placeholder="192.168.1.1&#10;192.168.1.2" class="input" style="width:100%;"></textarea></div>
+      <div class="modal-field"><label>端口</label><input id="addBkPort" type="number" value="11434" class="input input-lg" style="width:100%;"></div>
+      <div class="modal-actions">
+        <button onclick="closeModal('addBkModal')" class="btn btn-ghost">取消</button>
+        <button onclick="addBackends()" class="btn btn-white">添加</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="batchKeyModal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-title">批量创建 API Key</div>
+      <div class="modal-field"><label>名称（每行一个，或留空）</label><textarea id="batchKeyNames" rows="3" placeholder="user-1&#10;user-2" class="input" style="width:100%;"></textarea></div>
+      <div class="modal-actions">
+        <button onclick="closeModal('batchKeyModal')" class="btn btn-ghost">取消</button>
+        <button onclick="batchCreateKeys()" class="btn btn-white">创建</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="editKeyModal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-title">编辑 API Key</div>
+      <div class="modal-field"><label>API Key</label><input id="editKeyValue" type="text" readonly class="input input-lg mono" style="width:100%;opacity:0.5;"></div>
+      <div class="modal-field"><label>备注</label><input id="editKeyName" type="text" class="input input-lg" style="width:100%;"></div>
+      <div class="modal-field" style="display:flex;align-items:center;gap:8px;"><input id="editKeyEnabled" type="checkbox"><label style="margin:0;font-size:13px;color:#d4d4d8;">启用</label></div>
+      <div class="modal-actions">
+        <button onclick="closeModal('editKeyModal')" class="btn btn-ghost">取消</button>
+        <button onclick="saveKey()" class="btn btn-white">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="addSubModal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-title">添加订阅</div>
+      <div class="modal-field"><label>订阅 URL</label><input id="addSubUrl" type="text" placeholder="https://example.com/subscribe" class="input input-lg" style="width:100%;"></div>
+      <div class="modal-field"><label>备注名称</label><input id="addSubName" type="text" placeholder="可选" class="input input-lg" style="width:100%;"></div>
+      <div class="modal-actions">
+        <button onclick="closeModal('addSubModal')" class="btn btn-ghost">取消</button>
+        <button onclick="addSubscription()" class="btn btn-white" id="addSubBtn">添加</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="addNodeModal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-title">添加节点</div>
+      <div class="modal-field"><label>名称</label><input id="addNodeName" type="text" class="input input-lg" style="width:100%;"></div>
+      <div class="modal-field"><label>协议</label>
+        <select id="addNodeProto" class="input input-lg" style="width:100%;"><option value="http">HTTP</option><option value="socks5">SOCKS5</option><option value="ss">Shadowsocks</option><option value="vmess">VMess</option><option value="trojan">Trojan</option></select>
+      </div>
+      <div class="modal-field"><label>服务器</label><input id="addNodeServer" type="text" class="input input-lg" style="width:100%;"></div>
+      <div class="modal-field"><label>端口</label><input id="addNodePort" type="number" class="input input-lg" style="width:100%;"></div>
+      <div class="modal-actions">
+        <button onclick="closeModal('addNodeModal')" class="btn btn-ghost">取消</button>
+        <button onclick="addProxyNode()" class="btn btn-white">添加</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const TOKEN = localStorage.getItem('adminToken');
+    if (!TOKEN) location.href = '/admin/login';
+
+    let backendsData = [], keysData = [], hourlyChart = null, dailyChart = null;
+    let bkPage = 1, logPage = 1, shPage = 1, scanHistoryData = [];
+
+    async function api(path, opts = {}) {
+      const o = { headers: { 'Authorization': `Bearer ${TOKEN}`, 'Content-Type': 'application/json' }, ...opts };
+      if (o.body && typeof o.body === 'object') o.body = JSON.stringify(o.body);
+      const r = await fetch(path, o);
+      if (r.status === 401) { localStorage.removeItem('adminToken'); location.href = '/admin/login'; return; }
+      return r.json();
+    }
+
+    function fmtTime(ts) {
+      if (!ts) return '-';
+      const d = new Date(ts * 1000);
+      return d.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+    function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+    function showToast(msg, type = 'success') {
+      const t = document.createElement('div'); t.className = `toast toast-${type}`; t.textContent = msg;
+      document.body.appendChild(t); setTimeout(() => t.remove(), 2500);
+    }
+    function openModal(id) { document.getElementById(id).classList.add('open'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+    function copyText(text) { navigator.clipboard.writeText(text).then(() => showToast('已复制')); }
+    function logout() { localStorage.removeItem('adminToken'); location.href = '/admin/login'; }
+
+    const panels = ['Backends', 'Ai', 'Scanner', 'Stats', 'Logs', 'Keys', 'Config', 'Proxy'];
+    function switchTab(name) {
+      panels.forEach(p => {
+        document.getElementById('panel' + p).classList.toggle('hidden', p.toLowerCase() !== name);
+        document.getElementById('tab' + p).classList.toggle('active', p.toLowerCase() === name);
+      });
+      if (name === 'backends') loadBackends();
+      else if (name === 'ai') initChat();
+      else if (name === 'scanner') loadScanHistory();
+      else if (name === 'stats') loadStats();
+      else if (name === 'logs') loadLogs();
+      else if (name === 'keys') loadKeys();
+      else if (name === 'config') loadConfig();
+      else if (name === 'proxy') loadProxyData();
+    }
+
+    // === Backends ===
+    async function loadBackends() {
+      const d = await api('/admin/api/backends');
+      if (!d) return;
+      backendsData = d.backends || [];
+      const s = d.stats || {};
+      document.getElementById('bkTotal').textContent = s.total ?? '-';
+      document.getElementById('bkOnline').textContent = s.online ?? '-';
+      document.getElementById('bkOffline').textContent = s.offline ?? '-';
+      document.getElementById('bkCooldown').textContent = s.cooldown ?? '-';
+      document.getElementById('bkEnabled').textContent = s.enabled ?? '-';
+      document.getElementById('bkModels').textContent = (s.models || []).length;
+      // 模型汇总统计
+      const mdMap = {'glm-4.7':{ok:0,fail:0},'kimi-k2.5':{ok:0,fail:0},'gemini-3-flash-preview':{ok:0,fail:0},'glm-5':{ok:0,fail:0}};
+      for (const b of backendsData) {
+        const allShort = new Set((b.models||[]).map(x=>x.split(':')[0]));
+        const failShort = new Set((b.failed_models||[]).map(x=>x.split(':')[0]));
+        for (const m of Object.keys(mdMap)) {
+          if (failShort.has(m)) mdMap[m].fail++;
+          else if (allShort.has(m)) mdMap[m].ok++;
+        }
+      }
+      document.getElementById('mdGlm47Ok').textContent = mdMap['glm-4.7'].ok;
+      document.getElementById('mdGlm47Fail').textContent = mdMap['glm-4.7'].fail;
+      document.getElementById('mdKimiOk').textContent = mdMap['kimi-k2.5'].ok;
+      document.getElementById('mdKimiFail').textContent = mdMap['kimi-k2.5'].fail;
+      document.getElementById('mdGeminiOk').textContent = mdMap['gemini-3-flash-preview'].ok;
+      document.getElementById('mdGeminiFail').textContent = mdMap['gemini-3-flash-preview'].fail;
+      document.getElementById('mdGlm5Ok').textContent = mdMap['glm-5'].ok;
+      document.getElementById('mdGlm5Fail').textContent = mdMap['glm-5'].fail;
+      renderBackends();
+    }
+
+    function renderBackends() {
+      const filter = document.getElementById('bkFilter').value.toLowerCase();
+      const list = backendsData.filter(b => b.key.toLowerCase().includes(filter));
+      const tb = document.getElementById('bkTableBody');
+      document.getElementById('bkEmpty').classList.toggle('hidden', list.length > 0);
+      if (!list.length) { tb.innerHTML = ''; document.getElementById('bkPager').classList.add('hidden'); return; }
+      const ps = parseInt(document.getElementById('bkPageSize').value);
+      const totalPages = Math.ceil(list.length / ps);
+      bkPage = Math.max(1, Math.min(bkPage, totalPages));
+      const paged = list.slice((bkPage - 1) * ps, bkPage * ps);
+      document.getElementById('bkPager').classList.remove('hidden');
+      document.getElementById('bkPagerInfo').textContent = `${(bkPage-1)*ps+1}-${Math.min(bkPage*ps, list.length)} / ${list.length}`;
+      document.getElementById('bkPrev').disabled = bkPage <= 1;
+      document.getElementById('bkNext').disabled = bkPage >= totalPages;
+      tb.innerHTML = paged.map(b => {
+        const st = b.status === 'online' ? 'green' : b.status === 'offline' ? 'red' : b.status === 'cooldown' ? 'yellow' : 'gray';
+        const failed = new Set((b.failed_models || []).map(x => x.split(':')[0]));
+        const targetModels = ['glm-4.7','kimi-k2.5','gemini-3-flash-preview','glm-5'];
+        const allShort = new Set((b.models || []).map(x => x.split(':')[0]));
+        const models = '<div class="model-grid">' + targetModels.map(m => {
+          const cls = failed.has(m) ? 'fail' : allShort.has(m) ? 'ok' : 'none';
+          const tip = cls === 'ok' ? '可用' : cls === 'fail' ? '不可用' : '未安装';
+          return `<span class="model-card ${cls}" title="${tip}"><span class="dot"></span>${esc(m)}</span>`;
+        }).join('') + '</div>';
+        const extra = '';
+        return `<tr>
+          <td style="padding-left:20px;"><span class="code-chip" onclick="copyText('${esc(b.key)}')">${esc(b.key)}</span></td>
+          <td class="tc"><span class="badge badge-${st}">${esc(b.status)}</span></td>
+          <td>${models}${extra}</td>
+          <td class="tc mono">${b.latency_ms ? b.latency_ms.toFixed(0) + 'ms' : '-'}</td>
+          <td class="tc mono">${b.request_count}/${b.fail_count}</td>
+          <td style="font-size:12px;color:#71717a;">${fmtTime(b.last_used)}</td>
+          <td class="tc">
+            <button onclick="testBackend('${esc(b.key)}')" class="btn-icon" title="测试"><svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></button>
+            <button onclick="toggleBackend('${esc(b.key)}',${!b.enabled})" class="btn-icon" title="${b.enabled ? '禁用' : '启用'}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="${b.enabled ? '#22c55e' : '#71717a'}" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="${b.enabled ? 'M9 12l2 2 4-4' : 'M15 9l-6 6M9 9l6 6'}"/></svg>
+            </button>
+            ${b.status === 'cooldown' ? `<button onclick="clearCooldown('${esc(b.key)}')" class="btn-icon" title="清除冷却"><svg viewBox="0 0 24 24" fill="none" stroke="#eab308" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg></button>` : ''}
+            <button onclick="deleteBackend('${esc(b.key)}')" class="btn-icon btn-icon-danger" title="删除"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    async function addBackends() {
+      const ips = document.getElementById('addBkIps').value.trim();
+      const port = parseInt(document.getElementById('addBkPort').value) || 11434;
+      if (!ips) return;
+      const d = await api('/admin/api/backends', { method: 'POST', body: { ips, port } });
+      if (d?.success) { showToast(`添加 ${d.added} 个，跳过 ${d.skipped} 个`); closeModal('addBkModal'); document.getElementById('addBkIps').value = ''; loadBackends(); }
+    }
+
+    async function toggleBackend(key, enabled) {
+      await api(`/admin/api/backends/${key}`, { method: 'PUT', body: { enabled } });
+      loadBackends();
+    }
+
+    async function deleteBackend(key) {
+      if (!confirm(`确认删除 ${key}？`)) return;
+      await api(`/admin/api/backends/${key}`, { method: 'DELETE' });
+      loadBackends();
+    }
+
+    async function cleanUselessBackends() {
+      const targetModels = ['glm-4.7','kimi-k2.5','gemini-3-flash-preview','glm-5'];
+      const useless = backendsData.filter(b => {
+        const allShort = new Set((b.models||[]).map(x=>x.split(':')[0]));
+        const failShort = new Set((b.failed_models||[]).map(x=>x.split(':')[0]));
+        return !targetModels.some(m => allShort.has(m) && !failShort.has(m));
+      });
+      if (!useless.length) { showToast('没有无用后端', 'info'); return; }
+      if (!confirm(`将删除 ${useless.length} 个无可用目标模型的后端，确认？`)) return;
+      for (const b of useless) await api(`/admin/api/backends/${b.key}`, { method: 'DELETE' });
+      showToast(`已删除 ${useless.length} 个后端`); loadBackends();
+    }
+
+    async function clearCooldown(key) {
+      await api(`/admin/api/backends/${key}/clear-cooldown`, { method: 'POST' });
+      showToast('已清除冷却'); loadBackends();
+    }
+
+    async function triggerHealthCheck() {
+      await api('/admin/api/backends/health-check', { method: 'POST' });
+      document.getElementById('healthProgress').classList.remove('hidden');
+      const poll = setInterval(async () => {
+        const p = await api('/admin/api/backends/health-progress');
+        if (!p) { clearInterval(poll); return; }
+        document.getElementById('healthProgressText').textContent = `${p.checked || 0}/${p.total || 0}`;
+        if (!p.running) { clearInterval(poll); document.getElementById('healthProgress').classList.add('hidden'); loadBackends(); showToast('健康检查完成'); }
+      }, 1000);
+    }
+
+    // === Stats ===
+    const chartOpts = { responsive: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#52525b', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.03)' } }, y: { ticks: { color: '#52525b' }, grid: { color: 'rgba(255,255,255,0.03)' } } } };
+    async function loadStats() {
+      const [summary, hourly, daily] = await Promise.all([
+        api('/admin/api/stats/summary'), api('/admin/api/stats/hourly?hours=24'), api('/admin/api/stats/daily?days=7')
+      ]);
+      if (!summary) return;
+      const t = summary.today || {};
+      document.getElementById('stTotal').textContent = t.total ?? 0;
+      document.getElementById('stSuccess').textContent = t.success ?? 0;
+      document.getElementById('stFailed').textContent = t.failed ?? 0;
+      document.getElementById('stRate').textContent = t.total ? ((t.success / t.total) * 100).toFixed(1) + '%' : '-';
+
+      // Hourly chart
+      const hData = (hourly?.data || []);
+      if (hourlyChart) hourlyChart.destroy();
+      hourlyChart = new Chart(document.getElementById('hourlyChart'), {
+        type: 'line', data: {
+          labels: hData.map(h => h.time.split(' ')[1] + ':00'),
+          datasets: [
+            { label: '成功', data: hData.map(h => h.success), borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)', fill: true, tension: 0.3 },
+            { label: '失败', data: hData.map(h => h.failed), borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', fill: true, tension: 0.3 }
+          ]
+        }, options: chartOpts
+      });
+
+      // Daily chart
+      const dData = (daily?.data || []);
+      if (dailyChart) dailyChart.destroy();
+      dailyChart = new Chart(document.getElementById('dailyChart'), {
+        type: 'bar', data: {
+          labels: dData.map(d => d.date.slice(5)),
+          datasets: [
+            { label: '成功', data: dData.map(d => d.success), backgroundColor: 'rgba(34,197,94,0.6)' },
+            { label: '失败', data: dData.map(d => d.failed), backgroundColor: 'rgba(239,68,68,0.6)' }
+          ]
+        }, options: chartOpts
+      });
+
+      // Model distribution
+      const md = summary.model_distribution || {};
+      const total = Object.values(md).reduce((a, b) => a + b, 0) || 1;
+      document.getElementById('modelDist').innerHTML = Object.entries(md)
+        .sort((a, b) => b[1] - a[1])
+        .map(([m, c]) => `<span class="badge badge-blue">${esc(m)} <b>${c}</b> (${(c / total * 100).toFixed(0)}%)</span>`).join('');
+    }
+
+    // === Logs ===
+    async function loadLogs() {
+      const ps = parseInt(document.getElementById('logPageSize').value);
+      const offset = (logPage - 1) * ps;
+      const d = await api(`/admin/api/logs?limit=${ps}&offset=${offset}`);
+      if (!d) return;
+      const total = d.total ?? 0;
+      document.getElementById('logTotal').textContent = total;
+      const logs = d.logs || [];
+      document.getElementById('logEmpty').classList.toggle('hidden', logs.length > 0);
+      const totalPages = Math.ceil(total / ps);
+      logPage = Math.max(1, Math.min(logPage, totalPages || 1));
+      if (logs.length > 0) {
+        document.getElementById('logPager').classList.remove('hidden');
+        document.getElementById('logPagerInfo').textContent = `${offset+1}-${offset+logs.length} / ${total}`;
+        document.getElementById('logPrev').disabled = logPage <= 1;
+        document.getElementById('logNext').disabled = logPage >= totalPages;
+      } else {
+        document.getElementById('logPager').classList.add('hidden');
+      }
+      document.getElementById('logTableBody').innerHTML = logs.map(l => {
+        const st = l.status === 'success' ? 'green' : 'red';
+        return `<tr>
+          <td style="padding-left:20px;font-size:12px;color:#71717a;">${fmtTime(l.timestamp)}</td>
+          <td><span class="code-chip">${esc(l.model || '-')}</span></td>
+          <td class="mono" style="font-size:12px;">${esc(l.backend || '-')}</td>
+          <td class="mono" style="font-size:12px;">${esc(l.api_key_preview || '-')}</td>
+          <td class="tc"><span class="badge badge-${st}">${esc(l.status)}</span></td>
+          <td class="tc mono">${l.duration_ms ? l.duration_ms + 'ms' : '-'}</td>
+          <td style="font-size:12px;color:#71717a;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(l.error || '-')}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    async function clearLogs() {
+      if (!confirm('确认清空所有日志？')) return;
+      await api('/admin/api/logs', { method: 'DELETE' });
+      showToast('日志已清空'); loadLogs();
+    }
+
+    // === Keys ===
+    async function loadKeys() {
+      const d = await api('/admin/api/keys');
+      if (!d) return;
+      keysData = d.keys || [];
+      const s = d.stats || {};
+      document.getElementById('keyTotal').textContent = s.total ?? '-';
+      document.getElementById('keyEnabled').textContent = s.enabled ?? '-';
+      document.getElementById('keyDisabled').textContent = (s.total || 0) - (s.enabled || 0);
+      document.getElementById('keyReqs').textContent = s.total_requests ?? '-';
+      renderKeys();
+    }
+
+    function renderKeys() {
+      const tb = document.getElementById('keyTableBody');
+      document.getElementById('keyEmpty').classList.toggle('hidden', keysData.length > 0);
+      if (!keysData.length) { tb.innerHTML = ''; return; }
+      tb.innerHTML = keysData.map(k => {
+        const st = k.enabled ? 'green' : 'gray';
+        const preview = k.key.length > 16 ? k.key.slice(0, 8) + '...' + k.key.slice(-4) : k.key;
+        return `<tr>
+          <td style="padding-left:20px;"><span class="code-chip" onclick="copyText('${esc(k.key)}')">${esc(preview)}</span></td>
+          <td style="color:#a1a1aa;">${esc(k.name || '-')}</td>
+          <td class="tc"><span class="badge badge-${st}">${k.enabled ? '启用' : '禁用'}</span></td>
+          <td class="tc mono">${k.request_count}</td>
+          <td style="font-size:12px;color:#71717a;">${fmtTime(k.last_used)}</td>
+          <td class="tc">
+            <button onclick="editKey('${esc(k.key)}')" class="btn-icon" title="编辑"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            <button onclick="deleteKey('${esc(k.key)}')" class="btn-icon btn-icon-danger" title="删除"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    async function createKey() {
+      const d = await api('/admin/api/keys', { method: 'POST', body: { name: '' } });
+      if (d?.success) { showToast('Key 已创建'); copyText(d.key); loadKeys(); }
+    }
+
+    async function batchCreateKeys() {
+      const names = document.getElementById('batchKeyNames').value.trim();
+      const d = await api('/admin/api/keys/batch', { method: 'POST', body: { names } });
+      if (d?.success) {
+        showToast(`创建 ${d.keys.length} 个 Key`);
+        closeModal('batchKeyModal');
+        document.getElementById('batchKeyNames').value = '';
+        loadKeys();
+      }
+    }
+
+    function editKey(key) {
+      const k = keysData.find(x => x.key === key);
+      if (!k) return;
+      document.getElementById('editKeyValue').value = k.key;
+      document.getElementById('editKeyName').value = k.name || '';
+      document.getElementById('editKeyEnabled').checked = k.enabled;
+      openModal('editKeyModal');
+    }
+
+    async function saveKey() {
+      const key = document.getElementById('editKeyValue').value;
+      const name = document.getElementById('editKeyName').value;
+      const enabled = document.getElementById('editKeyEnabled').checked;
+      await api(`/admin/api/keys/${key}`, { method: 'PUT', body: { name, enabled } });
+      closeModal('editKeyModal'); showToast('已保存'); loadKeys();
+    }
+
+    async function deleteKey(key) {
+      if (!confirm('确认删除此 Key？')) return;
+      await api('/admin/api/keys/batch', { method: 'DELETE', body: { keys: [key] } });
+      loadKeys();
+    }
+
+    // === Config ===
+    let configSchema = {};
+    async function loadConfig() {
+      const d = await api('/admin/api/config');
+      if (!d) return;
+      configSchema = d.schema || {};
+      const values = d.values || {};
+      const groups = {};
+      for (const [key, meta] of Object.entries(configSchema)) {
+        const g = meta.group || 'other';
+        if (!groups[g]) groups[g] = [];
+        groups[g].push({ key, ...meta, value: values[key] ?? meta.value });
+      }
+      renderConfigForm(groups);
+    }
+
+    function renderConfigForm(groups) {
+      const groupLabels = { auth: '认证', network: '网络', system: '系统', scanner: '扫描器', other: '其他' };
+      document.getElementById('configForm').innerHTML = Object.entries(groups).map(([g, items]) => `
+        <div class="panel" style="margin-bottom:16px;">
+          <div class="panel-header"><span class="panel-header-text"><b>${groupLabels[g] || g}</b></span></div>
+          <div style="padding:16px 20px;display:grid;gap:12px;">
+            ${items.map(i => `
+              <div style="display:flex;align-items:center;gap:12px;">
+                <label style="width:180px;font-size:13px;color:#a1a1aa;flex-shrink:0;">${esc(i.label)}</label>
+                <input id="cfg_${i.key}" type="${i.type === 'password' ? 'password' : 'text'}"
+                  value="${i.type === 'password' ? '' : esc(String(i.value))}"
+                  placeholder="${i.type === 'password' ? '留空不修改' : ''}"
+                  class="input" style="flex:1;">
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function saveConfig() {
+      const updates = {};
+      for (const key of Object.keys(configSchema)) {
+        const el = document.getElementById('cfg_' + key);
+        if (!el) continue;
+        const val = el.value.trim();
+        if (configSchema[key].type === 'password' && !val) continue;
+        updates[key] = val;
+      }
+      const d = await api('/admin/api/config', { method: 'PUT', body: { updates } });
+      if (d?.success) showToast('配置已保存');
+    }
+
+    async function resetConfig() {
+      if (!confirm('确认恢复默认配置？')) return;
+      await api('/admin/api/config/reset', { method: 'POST' });
+      showToast('已恢复默认'); loadConfig();
+    }
+
+    // === AI Chat ===
+    let chatHistory = JSON.parse(localStorage.getItem('aiChatHistory') || '[]');
+    let chatStreaming = false;
+
+    function initChat() {
+      renderChatMessages();
+      document.getElementById('chatInput').focus();
+    }
+
+    function saveChatHistory() {
+      localStorage.setItem('aiChatHistory', JSON.stringify(chatHistory));
+    }
+
+    function renderChatMessages() {
+      const el = document.getElementById('chatMessages');
+      el.innerHTML = chatHistory.map(m =>
+        `<div class="chat-msg ${m.role === 'user' ? 'chat-user' : 'chat-ai'}">${formatMd(m.content, m.role === 'assistant')}</div>`
+      ).join('');
+      el.scrollTop = el.scrollHeight;
+    }
+
+    function formatMd(text, isAi = false) {
+      let html = esc(text)
+        .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/\n/g, '<br>');
+      if (isAi) html = parseActions(html);
+      return html;
+    }
+
+    function quickChat(prompt) {
+      document.getElementById('chatInput').value = prompt;
+      sendChat();
+    }
+
+    function clearChat() {
+      chatHistory = [];
+      saveChatHistory();
+      renderChatMessages();
+    }
+
+    async function sendChat() {
+      if (chatStreaming) return;
+      const input = document.getElementById('chatInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      chatHistory.push({ role: 'user', content: text });
+      input.value = '';
+      renderChatMessages();
+
+      const model = document.getElementById('aiModel').value;
+      chatStreaming = true;
+      document.getElementById('chatSendBtn').textContent = '...';
+
+      chatHistory.push({ role: 'assistant', content: '' });
+      const aiIdx = chatHistory.length - 1;
+
+      try {
+        const resp = await fetch('/admin/api/ai/chat', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: chatHistory.slice(0, -1), model })
+        });
+
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          const lines = buf.split('\n');
+          buf = lines.pop();
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            const data = line.slice(6);
+            if (data === '[DONE]') break;
+            try {
+              const j = JSON.parse(data);
+              if (j.error) { chatHistory[aiIdx].content += j.error; break; }
+              const delta = j.choices?.[0]?.delta?.content || '';
+              chatHistory[aiIdx].content += delta;
+            } catch {}
+          }
+          renderChatMessages();
+        }
+      } catch (e) {
+        chatHistory[aiIdx].content += `\n[错误: ${e.message}]`;
+      }
+
+      chatStreaming = false;
+      document.getElementById('chatSendBtn').textContent = '发送';
+      saveChatHistory();
+      renderChatMessages();
+    }
+
+    // === Scanner ===
+    let scanPollTimer = null;
+
+    async function loadScanHistory() {
+      const d = await api('/admin/api/scanner/history');
+      if (!d) return;
+      const s = d.stats || {};
+      document.getElementById('scRanges').textContent = s.total_ranges ?? 0;
+      document.getElementById('scFound').textContent = s.total_found ?? 0;
+      document.getElementById('scUsable').textContent = s.total_usable ?? 0;
+      scanHistoryData = d.history || [];
+      renderScanHistory();
+      const p = await api('/admin/api/scanner/progress');
+      if (p?.running) startScanPoll();
+      else document.getElementById('scStatus').textContent = '空闲';
+      loadRecommend();
+    }
+
+    const TARGET_MODELS = ['glm-4.7', 'kimi-k2.5', 'gemini-3-flash-preview', 'glm-5'];
+    let expandedHistory = {};
+
+    function renderScanHistory() {
+      const showEmpty = document.getElementById('shShowEmpty')?.checked;
+      const hist = showEmpty ? scanHistoryData : scanHistoryData.filter(r => r.found > 0);
+      document.getElementById('scanHistoryEmpty').classList.toggle('hidden', hist.length > 0);
+      if (!hist.length) { document.getElementById('scanHistoryBody').innerHTML = ''; document.getElementById('shPager').classList.add('hidden'); return; }
+      const ps = 50;
+      const totalPages = Math.ceil(hist.length / ps);
+      shPage = Math.max(1, Math.min(shPage, totalPages));
+      const paged = hist.slice((shPage - 1) * ps, shPage * ps);
+      document.getElementById('shPager').classList.remove('hidden');
+      document.getElementById('shPagerInfo').textContent = `${(shPage-1)*ps+1}-${Math.min(shPage*ps, hist.length)} / ${hist.length}`;
+      document.getElementById('shPrev').disabled = shPage <= 1;
+      document.getElementById('shNext').disabled = shPage >= totalPages;
+      let html = '';
+      paged.forEach((r, idx) => {
+        const key = r.start + '-' + r.end;
+        const hasIps = (r.found_ips || []).length > 0;
+        const expanded = expandedHistory[key];
+        html += `<tr${hasIps ? ` style="cursor:pointer" onclick="toggleHistoryDetail('${esc(key)}')"` : ''}>
+          <td style="padding-left:20px;" class="mono">${hasIps ? `<span class="group-arrow${expanded ? ' open' : ''}" id="sharrow-${esc(key)}">▶</span>` : '<span style="display:inline-block;width:17px;"></span>'}${esc(r.start)} — ${esc(r.end)}</td>
+          <td class="tc" style="font-size:12px;color:#71717a;">${fmtTime(r.scanned_at)}</td>
+          <td class="tc ${r.found > 0 ? 'c-green' : 'c-muted'}">${r.found}</td>
+          <td class="tc c-blue">${r.usable}</td>
+          <td class="tc"><span class="badge badge-${r.method === 'masscan' ? 'green' : 'gray'}">${r.method || '-'}</span></td>
+          <td class="tc">${hasIps ? `<span style="font-size:11px;color:#71717a;">${r.found_ips.length} IP</span>` : '-'}</td>
+        </tr>`;
+        if (hasIps && expanded) {
+          for (const ip of r.found_ips) {
+            html += `<tr class="sh-detail-${CSS.escape(key)}" style="background:rgba(255,255,255,0.02);">
+              <td style="padding-left:48px;" colspan="2">
+                <span class="code-chip" onclick="event.stopPropagation();copyText('${esc(ip)}')">${esc(ip)}</span>
+              </td>
+              <td colspan="3" style="font-size:11px;">
+                ${TARGET_MODELS.map(m => `<button class="btn btn-ghost" style="font-size:11px;height:24px;padding:0 6px;margin:1px;" onclick="event.stopPropagation();testIpModel('${esc(ip)}','${esc(m)}',this)">${esc(m)}</button>`).join('')}
+              </td>
+              <td class="tc"><button class="btn btn-ghost" style="font-size:11px;height:24px;padding:0 8px;color:#22c55e;border-color:rgba(34,197,94,0.3);" onclick="event.stopPropagation();addDiscoveredIp('${esc(ip)}',this)">入库</button></td>
+            </tr>`;
+          }
+        }
+      });
+      document.getElementById('scanHistoryBody').innerHTML = html;
+    }
+
+    function toggleHistoryDetail(key) {
+      expandedHistory[key] = !expandedHistory[key];
+      renderScanHistory();
+    }
+
+    async function testIpModel(ip, model, btn) {
+      const orig = btn.textContent;
+      btn.textContent = '...';
+      btn.disabled = true;
+      try {
+        const d = await api('/admin/api/scanner/test-ip-model', { method: 'POST', body: { ip, model } });
+        if (d?.success) {
+          btn.textContent = d.latency_ms + 'ms';
+          btn.style.color = '#4ade80';
+          btn.style.borderColor = 'rgba(34,197,94,0.4)';
+        } else {
+          btn.textContent = '失败';
+          btn.style.color = '#fca5a5';
+          btn.style.borderColor = 'rgba(239,68,68,0.4)';
+        }
+      } catch (e) {
+        btn.textContent = '错误';
+        btn.style.color = '#fca5a5';
+      }
+      btn.disabled = false;
+    }
+
+    async function addDiscoveredIp(ip, btn) {
+      btn.textContent = '...';
+      btn.disabled = true;
+      try {
+        const d = await api('/admin/api/scanner/add-ip', { method: 'POST', body: { ip } });
+        if (d?.added > 0) {
+          btn.textContent = '已入库';
+          btn.style.color = '#4ade80';
+          showToast(`${ip} 已入库`);
+        } else {
+          btn.textContent = '已存在';
+          btn.style.color = '#71717a';
+        }
+      } catch (e) {
+        btn.textContent = '失败';
+        btn.style.color = '#fca5a5';
+      }
+      btn.disabled = true;
+    }
+
+    let smartRecData = [];
+    async function showSmartRecommend() {
+      const area = document.getElementById('smartRecArea');
+      const chatEl = document.getElementById('smartRecChat');
+      const tableEl = document.getElementById('smartRecTable');
+      area.classList.remove('hidden');
+      tableEl.classList.add('hidden');
+      chatEl.textContent = '';
+      document.getElementById('smartRecBtn').disabled = true;
+      document.getElementById('smartRecBtn').textContent = 'AI 分析中...';
+
+      let fullText = '';
+      try {
+        const resp = await fetch('/admin/api/scanner/ai-recommend', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: 'glm-5' })
+        });
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = '';
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          const lines = buf.split('\n');
+          buf = lines.pop();
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            const data = line.slice(6);
+            if (data === '[DONE]') break;
+            try {
+              const j = JSON.parse(data);
+              if (j.error) { fullText += j.error; break; }
+              const delta = j.choices?.[0]?.delta?.content || '';
+              fullText += delta;
+            } catch {}
+          }
+          chatEl.textContent = fullText;
+          chatEl.scrollTop = chatEl.scrollHeight;
+        }
+      } catch (e) {
+        fullText += '\n[错误: ' + e.message + ']';
+        chatEl.textContent = fullText;
+      }
+
+      document.getElementById('smartRecBtn').disabled = false;
+      document.getElementById('smartRecBtn').textContent = 'AI 智能推荐';
+
+      // Parse JSON recommendations from AI response
+      const jsonMatch = fullText.match(/```json\s*([\s\S]*?)```/) || fullText.match(/\[\s*\{[\s\S]*?\}\s*\]/);
+      if (jsonMatch) {
+        try {
+          const jsonStr = jsonMatch[1] || jsonMatch[0];
+          const recs = JSON.parse(jsonStr);
+          if (Array.isArray(recs) && recs.length) {
+            smartRecData = recs;
+            document.getElementById('smartRecBody').innerHTML = recs.map((r, i) =>
+              `<tr>
+                <td style="padding-left:20px;"><input type="checkbox" class="smart-check" data-idx="${i}" checked></td>
+                <td>${esc(r.name || '')}</td>
+                <td class="tc mono" style="font-size:12px;">${esc(r.start || '')} — ${esc(r.end || '')}</td>
+                <td style="font-size:12px;color:#a1a1aa;">${esc(r.reason || '')}</td>
+              </tr>`
+            ).join('');
+            tableEl.classList.remove('hidden');
+          }
+        } catch {}
+      }
+    }
+
+    function toggleSmartAll(checked) {
+      document.querySelectorAll('.smart-check').forEach(c => c.checked = checked);
+    }
+
+    async function scanSmartSelected() {
+      const idxs = [...document.querySelectorAll('.smart-check:checked')].map(c => parseInt(c.dataset.idx));
+      const ranges = idxs.map(i => smartRecData[i]).filter(r => r && r.start && r.end);
+      if (!ranges.length) { showToast('请选择要扫描的地区', 'info'); return; }
+      if (!confirm(`将扫描 ${ranges.length} 个地区，确认？`)) return;
+      document.getElementById('smartScanBtn').disabled = true;
+      for (const r of ranges) {
+        await api('/admin/api/scanner/start', { method: 'POST', body: { start_ip: r.start, end_ip: r.end, force: false } });
+        startScanPoll();
+        await new Promise(resolve => {
+          const poll = setInterval(async () => {
+            const p = await api('/admin/api/scanner/progress');
+            if (!p?.running) { clearInterval(poll); resolve(); }
+          }, 2000);
+        });
+      }
+      document.getElementById('smartScanBtn').disabled = false;
+      showToast('选中地区扫描完成');
+      loadScanHistory();
+      document.getElementById('smartRecArea').classList.add('hidden');
+    }
+
+    let recData = [];
+    function getProvider(name) {
+      const m = name.match(/^(Hetzner(?:\s+US)?|OVH|DO|Vultr|Oracle|Linode|Contabo|RackNerd|Hostwinds|ColoCrossing|Psychz|QuadraNet|Hostinger|DediPath|Scaleway|IONOS)/);
+      return m ? m[1] : '其他';
+    }
+    function toggleGroup(provider) {
+      const rows = document.querySelectorAll(`.grp-${CSS.escape(provider)}`);
+      const arrow = document.getElementById('arrow-' + provider);
+      const hidden = rows[0]?.classList.contains('group-hidden');
+      rows.forEach(r => r.classList.toggle('group-hidden', !hidden));
+      arrow?.classList.toggle('open', hidden);
+    }
+    async function loadRecommend() {
+      const d = await api('/admin/api/scanner/recommend');
+      if (!d) return;
+      recData = d.ranges || [];
+      document.getElementById('recTotal').textContent = recData.length;
+      const unscanned = recData.filter(r => !r.scanned).length;
+      document.getElementById('recUnscanned').textContent = unscanned;
+      const groups = {};
+      recData.forEach((r, i) => {
+        const p = getProvider(r.name);
+        if (!groups[p]) groups[p] = [];
+        groups[p].push({ ...r, idx: i });
+      });
+      let html = '';
+      const showScanned = document.getElementById('recShowScanned')?.checked;
+      for (const [provider, items] of Object.entries(groups)) {
+        const sc = items.filter(r => r.scanned).length;
+        const usc = items.length - sc;
+        if (!showScanned && usc === 0) continue;
+        const totalIp = items.reduce((s, r) => s + (r.ip_count || 0), 0);
+        html += `<tr class="group-row" onclick="toggleGroup('${esc(provider)}')">
+          <td colspan="7" style="padding-left:20px;">
+            <span class="group-arrow" id="arrow-${esc(provider)}">▶</span>
+            <b>${esc(provider)}</b>
+            <span style="color:#71717a;font-weight:400;margin-left:8px;">${items.length} 段 · ${totalIp.toLocaleString()} IP</span>
+            <span class="badge badge-green" style="margin-left:8px;">${sc}</span>
+            ${usc ? `<span class="badge badge-yellow" style="margin-left:4px;">${usc}</span>` : ''}
+          </td></tr>`;
+        for (const r of items) {
+          html += `<tr class="grp-${CSS.escape(provider)} group-hidden">
+            <td style="padding-left:36px;"><input type="checkbox" class="rec-check" data-idx="${r.idx}" ${r.scanned ? 'disabled' : ''}></td>
+            <td>${esc(r.name)}</td><td>${esc(r.country)}</td>
+            <td class="tc mono" style="font-size:12px;">${esc(r.start)} — ${esc(r.end)}</td>
+            <td class="tc">${r.ip_count?.toLocaleString() || '-'}</td>
+            <td class="tc"><span class="badge badge-${r.scanned ? 'green' : 'yellow'}">${r.scanned ? '已扫描' : '未扫描'}</span></td>
+            <td class="tc">${r.scanned ? '-' : `<button onclick="scanSingleRange(${r.idx})" class="btn btn-ghost" style="font-size:11px;height:26px;padding:0 8px;">扫描</button>`}</td>
+          </tr>`;
+        }
+      }
+      document.getElementById('recTableBody').innerHTML = html;
+    }
+
+    function toggleRecAll(checked) {
+      document.querySelectorAll('.rec-check:not(:disabled)').forEach(c => c.checked = checked);
+    }
+
+    async function scanSelected() {
+      const idxs = [...document.querySelectorAll('.rec-check:checked')].map(c => parseInt(c.dataset.idx));
+      const ranges = idxs.map(i => recData[i]).filter(r => r && !r.scanned);
+      if (!ranges.length) { showToast('请选择未扫描的地区', 'info'); return; }
+      if (!confirm(`将扫描 ${ranges.length} 个地区，确认？`)) return;
+      document.getElementById('scanSelectedBtn').disabled = true;
+      for (const r of ranges) {
+        await api('/admin/api/scanner/start', { method: 'POST', body: { start_ip: r.start, end_ip: r.end, force: false } });
+        await new Promise(resolve => {
+          const poll = setInterval(async () => {
+            const p = await api('/admin/api/scanner/progress');
+            if (!p?.running) { clearInterval(poll); resolve(); }
+          }, 2000);
+        });
+      }
+      document.getElementById('scanSelectedBtn').disabled = false;
+      showToast('选中地区扫描完成');
+      loadScanHistory();
+    }
+
+    async function scanSingleRange(idx) {
+      const r = recData[idx];
+      if (!r || r.scanned) return;
+      if (!confirm(`扫描 ${r.name} (${r.start} — ${r.end})？`)) return;
+      const d = await api('/admin/api/scanner/start', { method: 'POST', body: { start_ip: r.start, end_ip: r.end, force: false } });
+      if (d?.success) { showToast('扫描已启动'); startScanPoll(); }
+      else showToast(d?.detail || '启动失败', 'error');
+    }
+
+    async function startScan() {
+      const startIp = document.getElementById('scanStartIp').value.trim();
+      const endIp = document.getElementById('scanEndIp').value.trim();
+      const force = document.getElementById('scanForce').checked;
+      if (!startIp || !endIp) { showToast('请输入IP段', 'error'); return; }
+      const d = await api('/admin/api/scanner/start', { method: 'POST', body: { start_ip: startIp, end_ip: endIp, force } });
+      if (d?.success) { showToast('扫描已启动'); startScanPoll(); }
+      else showToast(d?.detail || '启动失败', 'error');
+    }
+
+    function startScanPoll() {
+      document.getElementById('scanProgressArea').classList.remove('hidden');
+      document.getElementById('scStatus').textContent = '扫描中';
+      document.getElementById('scStatus').className = 'stat-value c-yellow';
+      if (scanPollTimer) clearInterval(scanPollTimer);
+      scanPollTimer = setInterval(async () => {
+        const p = await api('/admin/api/scanner/progress');
+        if (!p) return;
+        const pct = p.total ? ((p.scanned / p.total) * 100).toFixed(1) : 0;
+        document.getElementById('scanProgressText').textContent = `${p.scanned}/${p.total}`;
+        document.getElementById('scanFoundLive').textContent = p.found;
+        document.getElementById('scanProgressFill').style.width = pct + '%';
+        if (!p.running) {
+          clearInterval(scanPollTimer);
+          scanPollTimer = null;
+          document.getElementById('scStatus').textContent = '空闲';
+          document.getElementById('scStatus').className = 'stat-value';
+          showToast('扫描完成');
+          setTimeout(() => document.getElementById('scanProgressArea').classList.add('hidden'), 2000);
+          loadScanHistory();
+        }
+      }, 1000);
+    }
+
+    async function scannerCleanup() {
+      if (!confirm('将删除离线超过24小时的后端，确认？')) return;
+      const d = await api('/admin/api/scanner/cleanup', { method: 'POST' });
+      if (d?.success) showToast(`已清理 ${d.removed} 个离线后端`);
+    }
+
+    async function stopScan() {
+      const d = await api('/admin/api/scanner/stop', { method: 'POST' });
+      showToast(d?.message || '操作完成', d?.success ? 'success' : 'info');
+    }
+
+    async function testBackend(key) {
+      showToast('测试中...', 'info');
+      const d = await api(`/admin/api/backends/${key}/test`, { method: 'POST' });
+      if (!d) return;
+      if (d.success) {
+        showToast(`延迟 ${d.latency_ms}ms, 目标模型: ${d.target_models.length ? d.target_models.join(', ') : '无'}`);
+      } else {
+        showToast(`测试失败: ${d.error}`, 'error');
+      }
+    }
+
+    async function autoScanRecommended() {
+      if (!confirm('将自动扫描所有未扫描的推荐地区，确认？')) return;
+      const d = await api('/admin/api/scanner/auto-scan', { method: 'POST' });
+      if (d?.success) { showToast('自动扫描已启动'); startAutoScanPoll(); }
+      else showToast(d?.message || '启动失败', 'error');
+    }
+
+    let autoPollTimer = null;
+    function startAutoScanPoll() {
+      document.getElementById('autoScanArea').classList.remove('hidden');
+      document.getElementById('scStatus').textContent = '自动扫描中';
+      document.getElementById('scStatus').className = 'stat-value c-yellow';
+      if (autoPollTimer) clearInterval(autoPollTimer);
+      autoPollTimer = setInterval(async () => {
+        const p = await api('/admin/api/scanner/auto-progress');
+        if (!p || !p.total) return;
+        const pct = p.total ? ((p.current / p.total) * 100).toFixed(1) : 0;
+        document.getElementById('autoScanText').textContent = `${p.current}/${p.total}`;
+        document.getElementById('autoScanName').textContent = p.current_name || '-';
+        document.getElementById('autoScanFill').style.width = pct + '%';
+        if (p.current_name === '完成' || p.current >= p.total) {
+          clearInterval(autoPollTimer); autoPollTimer = null;
+          document.getElementById('scStatus').textContent = '空闲';
+          document.getElementById('scStatus').className = 'stat-value';
+          showToast('自动扫描完成');
+          setTimeout(() => document.getElementById('autoScanArea').classList.add('hidden'), 2000);
+          loadScanHistory();
+        }
+      }, 2000);
+    }
+
+    // === AI Actions ===
+    async function executeAIAction(action, params) {
+      const d = await api('/admin/api/ai/execute', { method: 'POST', body: { action, params } });
+      if (d) {
+        showToast(d.message || (d.success ? '操作成功' : '操作失败'), d.success ? 'success' : 'error');
+        if (['scan','auto_scan','health_check'].includes(action)) { if (action === 'scan') startScanPoll(); if (action === 'auto_scan') startAutoScanPoll(); }
+        if (['add_backend','remove_backend','toggle_backend','clear_cooldown','cleanup','clean_useless'].includes(action)) loadBackends();
+      }
+    }
+
+    function parseActions(text) {
+      return text.replace(/\[ACTION:([^\]]+)\]/g, (match, inner) => {
+        const parts = inner.split(':');
+        const action = parts[0];
+        const params = parts.slice(1);
+        const label = { scan:'启动扫描', auto_scan:'一键扫描', health_check:'健康检查', cleanup:'清理离线',
+          add_backend:'添加后端', remove_backend:'删除后端', toggle_backend:'切换后端', clear_cooldown:'清除冷却',
+          create_key:'创建Key', delete_key:'删除Key', toggle_key:'切换Key', set_config:'修改配置', clean_useless:'清理无用' }[action] || action;
+        const pJson = JSON.stringify(params).replace(/"/g, '&quot;');
+        return `<button class="btn btn-ghost" style="margin:4px 0;font-size:12px;height:26px;" onclick="executeAIAction('${action}',${pJson})">▶ ${esc(label)}${params.length ? ' ('+esc(params.join(', '))+')' : ''}</button>`;
+      });
+    }
+
+    // === Proxy ===
+    async function loadProxyData() {
+      const [status, nodes, subs] = await Promise.all([
+        api('/api/proxy/status'), api('/api/proxy/nodes'), api('/api/proxy/subscriptions')
+      ]);
+      if (!status) return;
+      document.getElementById('pxTotal').textContent = status.total_nodes;
+      document.getElementById('pxAlive').textContent = status.alive_nodes;
+      document.getElementById('pxBestLatency').textContent = status.best_latency ? status.best_latency + 'ms' : '-';
+      document.getElementById('pxStatus').textContent = status.enabled ? (status.best_node || '已启用') : '未启用';
+      document.getElementById('pxStatus').className = 'stat-value ' + (status.enabled ? 'c-green' : 'c-muted');
+      document.getElementById('pxEnabledToggle').checked = status.enabled;
+
+      // Subscriptions
+      const subList = subs?.subscriptions || [];
+      document.getElementById('subEmpty').classList.toggle('hidden', subList.length > 0);
+      document.getElementById('subTableBody').innerHTML = subList.map(s => `<tr>
+        <td style="padding-left:20px;">${esc(s.name)}</td>
+        <td class="mono" style="font-size:12px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(s.url)}</td>
+        <td class="tc">${s.node_count || 0}</td>
+        <td style="font-size:12px;color:#71717a;">${fmtTime(s.added_at)}</td>
+        <td class="tc"><button onclick="deleteSubscription('${esc(s.url)}')" class="btn-icon btn-icon-danger" title="删除"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td>
+      </tr>`).join('');
+
+      // Nodes
+      const nodeList = nodes?.nodes || [];
+      const aliveCount = nodeList.filter(n => n.alive).length;
+      document.getElementById('nodeCount').textContent = `(${aliveCount}/${nodeList.length})`;
+      document.getElementById('nodeEmpty').classList.toggle('hidden', nodeList.length > 0);
+      document.getElementById('nodeTableBody').innerHTML = nodeList.map(n => {
+        const st = n.alive ? 'green' : (n.last_test ? 'red' : 'gray');
+        const stText = n.alive ? '可用' : (n.last_test ? '不可用' : '未测试');
+        const proto = {ss:'SS',vmess:'VMess',trojan:'Trojan',http:'HTTP',socks5:'SOCKS5'}[n.protocol] || n.protocol;
+        return `<tr>
+          <td style="padding-left:20px;">${esc(n.name)}</td>
+          <td class="tc"><span class="badge badge-blue">${proto}</span></td>
+          <td class="mono" style="font-size:12px;">${esc(n.server)}:${n.port}</td>
+          <td class="tc mono">${n.latency_ms ? n.latency_ms + 'ms' : '-'}</td>
+          <td class="tc"><span class="badge badge-${st}">${stText}</span></td>
+          <td class="tc">
+            <button onclick="testProxyNode('${esc(n.id)}')" class="btn-icon" title="测速"><svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></button>
+            <button onclick="deleteProxyNode('${esc(n.id)}')" class="btn-icon btn-icon-danger" title="删除"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    async function addSubscription() {
+      const url = document.getElementById('addSubUrl').value.trim();
+      if (!url) return;
+      const name = document.getElementById('addSubName').value.trim();
+      document.getElementById('addSubBtn').textContent = '解析中...';
+      document.getElementById('addSubBtn').disabled = true;
+      const d = await api('/api/proxy/subscribe', { method: 'POST', body: { url, name } });
+      document.getElementById('addSubBtn').textContent = '添加';
+      document.getElementById('addSubBtn').disabled = false;
+      if (d?.success) {
+        showToast(`添加成功，解析 ${d.added} 个节点`);
+        closeModal('addSubModal');
+        document.getElementById('addSubUrl').value = '';
+        document.getElementById('addSubName').value = '';
+        loadProxyData();
+      } else {
+        showToast(d?.message || '添加失败', 'error');
+      }
+    }
+
+    async function deleteSubscription(url) {
+      if (!confirm('删除此订阅及其所有节点？')) return;
+      await api('/api/proxy/subscribe', { method: 'DELETE', body: { url } });
+      loadProxyData();
+    }
+
+    async function addProxyNode() {
+      const name = document.getElementById('addNodeName').value.trim();
+      const protocol = document.getElementById('addNodeProto').value;
+      const server = document.getElementById('addNodeServer').value.trim();
+      const port = parseInt(document.getElementById('addNodePort').value);
+      if (!server || !port) { showToast('请填写服务器和端口', 'error'); return; }
+      const d = await api('/api/proxy/nodes', { method: 'POST', body: { name: name || `${protocol} ${server}`, protocol, server, port } });
+      if (d?.success) { showToast('节点已添加'); closeModal('addNodeModal'); loadProxyData(); }
+    }
+
+    function toggleNodeList() {
+      const wrap = document.getElementById('nodeTableWrap');
+      const arrow = document.getElementById('nodeToggleArrow');
+      const show = wrap.style.display === 'none';
+      wrap.style.display = show ? '' : 'none';
+      arrow.innerHTML = show ? '&#9660;' : '&#9654;';
+    }
+
+    async function deleteProxyNode(id) {
+      if (!confirm('确认删除此节点？')) return;
+      await api(`/api/proxy/nodes/${id}`, { method: 'DELETE' });
+      loadProxyData();
+    }
+
+    async function testProxyNode(id) {
+      showToast('测速中...', 'info');
+      const d = await api(`/api/proxy/test/${id}`, { method: 'POST' });
+      if (d?.alive) showToast(`延迟 ${d.latency_ms}ms`);
+      else showToast('节点不可用', 'error');
+      loadProxyData();
+    }
+
+    async function testAllProxyNodes() {
+      showToast('全部测速中...', 'info');
+      const d = await api('/api/proxy/test-all', { method: 'POST' });
+      if (d?.success) showToast(`测速完成: ${d.alive}/${d.total} 可用`);
+      loadProxyData();
+    }
+
+    async function toggleProxyEnabled(enabled) {
+      await api('/api/proxy/enabled', { method: 'PUT', body: { enabled } });
+      loadProxyData();
+    }
+
+    async function smartSelectNode() {
+      const btn = document.getElementById('smartSelectBtn');
+      btn.textContent = '分析中...';
+      btn.disabled = true;
+      try {
+        const d = await api('/api/proxy/smart-select', { method: 'POST' });
+        if (d?.success) {
+          showToast(d.reason);
+          loadProxyData();
+        } else {
+          showToast(d?.message || '智能选择失败', 'error');
+        }
+      } catch (e) {
+        showToast('请求失败: ' + e.message, 'error');
+      }
+      btn.textContent = '智能选择';
+      btn.disabled = false;
+    }
+
+    // === Init ===
+    loadBackends();
+  </script>
+</body>
+</html>

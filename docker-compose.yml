@@ -1,0 +1,16 @@
+version: "3.8"
+
+services:
+  ollama2api:
+    build: .
+    container_name: ollama2api
+    restart: unless-stopped
+    cap_add:
+      - NET_RAW
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    environment:
+      - TZ=Asia/Shanghai

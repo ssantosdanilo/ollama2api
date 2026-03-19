@@ -1,0 +1,14 @@
+[
+  {
+    "name": "Example US Range",
+    "start": "192.168.1.0",
+    "end": "192.168.1.255",
+    "force": false
+  },
+  {
+    "name": "Example EU Range (rescan)",
+    "start": "10.0.0.0",
+    "end": "10.0.255.255",
+    "force": true
+  }
+]
